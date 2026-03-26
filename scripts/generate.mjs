@@ -9,17 +9,30 @@ if (!owner || !token) {
   process.exit(1);
 }
 
-// Fetch top 20 repos by stars (stars > 0)
-const response = await fetch(
-  `https://api.github.com/search/repositories?q=user:${owner}+stars:>0&sort=stars&order=desc&per_page=20`,
-  { headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" } },
-);
-if (!response.ok) {
-  console.error(`GitHub API error: ${response.status} ${await response.text()}`);
-  process.exit(1);
+// Fetch all repos, paginating as needed
+const allRepos = [];
+let page = 1;
+while (true) {
+  const response = await fetch(
+    `https://api.github.com/users/${owner}/repos?type=owner&per_page=100&page=${page}`,
+    { headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" } },
+  );
+  if (!response.ok) {
+    console.error(`GitHub API error: ${response.status} ${await response.text()}`);
+    process.exit(1);
+  }
+  const batch = await response.json();
+  if (batch.length === 0) break;
+  allRepos.push(...batch);
+  page++;
 }
-const data = await response.json();
-const repos = data.items.map((r) => r.name);
+
+// Top 20 by stars, excluding repos with 0 stars
+const repos = allRepos
+  .filter((r) => r.stargazers_count > 0)
+  .sort((a, b) => b.stargazers_count - a.stargazers_count)
+  .slice(0, 20)
+  .map((r) => r.name);
 console.log(`Found ${repos.length} repos: ${repos.join(", ")}`);
 
 await mkdir("profile", { recursive: true });
