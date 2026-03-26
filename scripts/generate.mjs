@@ -50,7 +50,7 @@ for (const file of existing) {
 // Generate SVGs for each repo
 for (const repo of repos) {
   for (const [suffix, theme] of [["light", undefined], ["dark", "dark"]]) {
-    const query = { username: owner, repo };
+    const query = { username: owner, repo, description_lines_count: "3" };
     if (theme) query.theme = theme;
 
     let svg = "";
