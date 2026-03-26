@@ -15,59 +15,23 @@ jobs:
           # necessary for amend to last commit to work
           fetch-depth: 2
 
-      - name: Generate shoes-light.svg
-        uses: readme-tools/github-readme-stats-action@v1
+      - uses: actions/setup-node@v4
         with:
-          card: pin
-          options: username=${{ github.repository_owner }}&repo=shoes
-          path: profile/shoes-light.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
+          node-version: 22
 
-      - name: Generate shoes-dark.svg
-        uses: readme-tools/github-readme-stats-action@v1
-        with:
-          card: pin
-          options: username=${{ github.repository_owner }}&repo=shoes&theme=dark
-          path: profile/shoes-dark.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - run: npm ci
 
-      - name: Generate tobaru-light.svg
-        uses: readme-tools/github-readme-stats-action@v1
-        with:
-          card: pin
-          options: username=${{ github.repository_owner }}&repo=tobaru
-          path: profile/tobaru-light.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate cards and README
+        run: node scripts/generate.mjs
+        env:
+          PAT_1: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_OWNER: ${{ github.repository_owner }}
 
-      - name: Generate tobaru-dark.svg
-        uses: readme-tools/github-readme-stats-action@v1
-        with:
-          card: pin
-          options: username=${{ github.repository_owner }}&repo=tobaru&theme=dark
-          path: profile/tobaru-dark.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate garcon-light.svg
-        uses: readme-tools/github-readme-stats-action@v1
-        with:
-          card: pin
-          options: username=${{ github.repository_owner }}&repo=garcon
-          path: profile/garcon-light.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate garcon-dark.svg
-        uses: readme-tools/github-readme-stats-action@v1
-        with:
-          card: pin
-          options: username=${{ github.repository_owner }}&repo=garcon&theme=dark
-          path: profile/garcon-dark.svg
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Commit cards
+      - name: Commit changes
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@users.noreply.github.com"
-          git add profile/*.svg
+          git add profile/ README.md
           if [ "$(git log -1 --format=%s)" = "Update README cards" ]; then
             git commit --amend --no-edit || exit 0
             git push --force-with-lease
