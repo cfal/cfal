@@ -80,9 +80,6 @@ for (let i = 0; i < repos.length; i++) {
     `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo}-light.svg#gh-light-mode-only" />`,
     `</a>`,
   );
-  if (i < repos.length - 1) {
-    lines.push(`<br />`);
-  }
 }
 lines.push("</p>");
 
