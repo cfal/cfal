@@ -53,7 +53,32 @@ function formatCount(value) {
 }
 
 function textWidth(value, fontSize = 12) {
-  return Array.from(String(value)).length * fontSize * 0.53;
+  const widths = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0.2796875, 0.2765625, 0.3546875, 0.5546875,
+    0.5546875, 0.8890625, 0.665625, 0.190625, 0.3328125, 0.3328125,
+    0.3890625, 0.5828125, 0.2765625, 0.3328125, 0.2765625, 0.3015625,
+    0.5546875, 0.5546875, 0.5546875, 0.5546875, 0.5546875, 0.5546875,
+    0.5546875, 0.5546875, 0.5546875, 0.5546875, 0.2765625, 0.2765625,
+    0.584375, 0.5828125, 0.584375, 0.5546875, 1.0140625, 0.665625,
+    0.665625, 0.721875, 0.721875, 0.665625, 0.609375, 0.7765625, 0.721875,
+    0.2765625, 0.5, 0.665625, 0.5546875, 0.8328125, 0.721875, 0.7765625,
+    0.665625, 0.7765625, 0.721875, 0.665625, 0.609375, 0.721875, 0.665625,
+    0.94375, 0.665625, 0.665625, 0.609375, 0.2765625, 0.3546875,
+    0.2765625, 0.4765625, 0.5546875, 0.3328125, 0.5546875, 0.5546875, 0.5,
+    0.5546875, 0.5546875, 0.2765625, 0.5546875, 0.5546875, 0.221875,
+    0.240625, 0.5, 0.221875, 0.8328125, 0.5546875, 0.5546875, 0.5546875,
+    0.5546875, 0.3328125, 0.5, 0.2765625, 0.5546875, 0.5, 0.721875, 0.5,
+    0.5, 0.5, 0.3546875, 0.259375, 0.353125, 0.5890625,
+  ];
+  const averageWidth = 0.5279276315789471;
+  return (
+    Array.from(String(value))
+      .map((character) => {
+        return widths[character.codePointAt(0)] ?? averageWidth;
+      })
+      .reduce((sum, width) => sum + width, 0) * fontSize
+  );
 }
 
 function splitLongWord(word, width) {
@@ -142,7 +167,7 @@ function renderRepoCard(repo, { theme = "light" } = {}) {
     )
     .join("");
 
-  let statsX = 30;
+  let statsX = 0;
   let language = "";
   if (repo.language) {
     const color = languageColors[repo.language] || "#858585";
@@ -151,7 +176,7 @@ function renderRepoCard(repo, { theme = "light" } = {}) {
         <circle data-testid="lang-color" cx="${statsX}" cy="-5" r="6" fill="${color}"/>
         <text data-testid="lang-name" class="gray" x="${statsX + 15}">${escapeXml(repo.language)}</text>
       </g>`;
-    statsX += 15 + textWidth(repo.language) + 25;
+    statsX += textWidth(repo.language) + 25;
   }
 
   const stars = formatCount(repo.stargazers_count);
@@ -203,7 +228,7 @@ function renderRepoCard(repo, { theme = "light" } = {}) {
   </g>
   ${badge}
   <text class="description" x="25" y="66">${description}</text>
-  <g data-testid="repo-stats" transform="translate(0, 130)">
+  <g data-testid="repo-stats" transform="translate(30, 130)">
     ${language}
     ${star}
     ${forks}

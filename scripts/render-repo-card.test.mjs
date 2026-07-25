@@ -23,8 +23,22 @@ test("renders a complete light repository card", () => {
   assert.match(svg, /data-testid="stargazers"[^>]*>1\.2k</);
   assert.match(svg, /data-testid="forkcount"[^>]*>12</);
   assert.match(svg, /fill="#dea584"/);
+  assert.match(svg, /transform="translate\(49\.6375, 0\)"/);
   assert.match(svg, /&#60;XML&#62; &#38; other/);
   assert.doesNotMatch(svg, /Something went wrong/);
+});
+
+test("matches the original language-aware stats positions", () => {
+  const positions = new Map([
+    ["C", "33.6625"],
+    ["Rust", "49.6375"],
+    ["JavaScript", "80.93125"],
+  ]);
+
+  for (const [language, position] of positions) {
+    const svg = renderRepoCard({ ...repo, language });
+    assert.match(svg, new RegExp(`translate\\(${position}, 0\\)`));
+  }
 });
 
 test("renders the dark theme and omits zero forks", () => {
