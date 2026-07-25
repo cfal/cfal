@@ -1,87 +1,123 @@
 import { writeFile, mkdir, readdir, unlink } from "node:fs/promises";
-import pinApi from "github-readme-stats/api/pin.js";
+import { renderErrorCard, renderRepoCard } from "./render-repo-card.mjs";
 
 const EXCLUDE_REPOS = ["awesome-rust", "emit.js", "gotron-sdk", "set-timezone"];
 
 const owner = process.env.GITHUB_OWNER;
-const token = process.env.PAT_1;
 
-if (!owner || !token) {
-  console.error("GITHUB_OWNER and PAT_1 environment variables are required");
+if (!owner) {
+  console.error("GITHUB_OWNER environment variable is required");
   process.exit(1);
 }
 
-// Fetch all repos, paginating as needed
-const allRepos = [];
-let page = 1;
-while (true) {
-  const response = await fetch(
-    `https://api.github.com/users/${owner}/repos?type=owner&per_page=100&page=${page}`,
-    { headers: { Authorization: `token ${token}`, Accept: "application/vnd.github+json" } },
-  );
-  if (!response.ok) {
-    console.error(`GitHub API error: ${response.status} ${await response.text()}`);
-    process.exit(1);
-  }
-  const batch = await response.json();
-  if (batch.length === 0) break;
-  allRepos.push(...batch);
-  page++;
-}
-
-// Top 20 by stars, excluding repos with 0 stars
-const repos = allRepos
-  .filter((r) => r.stargazers_count > 0 && !EXCLUDE_REPOS.includes(r.name))
-  .sort((a, b) => b.stargazers_count - a.stargazers_count)
-  .slice(0, 20)
-  .map((r) => r.name);
-console.log(`Found ${repos.length} repos: ${repos.join(", ")}`);
-
-await mkdir("profile", { recursive: true });
-
-// Clean up old SVGs
-const existing = await readdir("profile").catch(() => []);
-for (const file of existing) {
-  if (file.endsWith(".svg")) {
-    await unlink(`profile/${file}`);
-  }
-}
-
-// Generate SVGs for each repo
-for (const repo of repos) {
-  for (const [suffix, theme] of [["light", undefined], ["dark", "dark"]]) {
-    const query = { username: owner, repo, description_lines_count: "3" };
-    if (theme) query.theme = theme;
-
-    let svg = "";
-    const res = {
-      setHeader: () => {},
-      send: (value) => {
-        svg = value;
-        return value;
+async function fetchRepos() {
+  const allRepos = [];
+  for (let page = 1; ; page++) {
+    const response = await fetch(
+      `https://api.github.com/users/${owner}/repos?type=owner&per_page=100&page=${page}`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
       },
-    };
+    );
+    if (!response.ok) {
+      throw new Error(`GitHub REST request failed (${response.status})`);
+    }
 
-    await pinApi({ query }, res);
-    await writeFile(`profile/${repo}-${suffix}.svg`, svg, "utf8");
-    console.log(`Generated profile/${repo}-${suffix}.svg`);
+    const batch = await response.json();
+    if (!Array.isArray(batch)) {
+      throw new Error("GitHub returned an unexpected repositories payload");
+    }
+    allRepos.push(...batch);
+    if (batch.length < 100) break;
   }
+  return allRepos;
 }
 
-// Generate README.md
-const lines = ['<p align="center">'];
-for (let i = 0; i < repos.length; i++) {
-  const repo = repos[i];
-  lines.push(
-    `<a href="https://github.com/${owner}/${repo}#gh-dark-mode-only">`,
-    `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo}-dark.svg#gh-dark-mode-only" />`,
-    `</a>`,
-    `<a href="https://github.com/${owner}/${repo}#gh-light-mode-only">`,
-    `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo}-light.svg#gh-light-mode-only" />`,
-    `</a>`,
+async function writeFailureCards(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const existing = await readdir("profile").catch(() => []);
+  const svgFiles = existing.filter((file) => file.endsWith(".svg"));
+  await Promise.all(
+    svgFiles.map((file) => {
+      const theme = file.endsWith("-dark.svg") ? "dark" : "light";
+      return writeFile(
+        `profile/${file}`,
+        renderErrorCard(message, { theme }),
+        "utf8",
+      );
+    }),
   );
 }
-lines.push("</p>");
 
-await writeFile("README.md", lines.join("\n") + "\n", "utf8");
-console.log(`Generated README.md with ${repos.length} repos`);
+async function main() {
+  const allRepos = await fetchRepos();
+  const repos = allRepos
+    .filter((repo) => {
+      return (
+        repo.stargazers_count > 0 &&
+        !repo.private &&
+        !EXCLUDE_REPOS.includes(repo.name)
+      );
+    })
+    .sort((a, b) => {
+      return (
+        b.stargazers_count - a.stargazers_count ||
+        a.name.localeCompare(b.name)
+      );
+    })
+    .slice(0, 20);
+
+  console.log(
+    `Found ${repos.length} repos: ${repos.map((repo) => repo.name).join(", ")}`,
+  );
+
+  const cards = [];
+  for (const repo of repos) {
+    for (const theme of ["light", "dark"]) {
+      cards.push({
+        file: `profile/${repo.name}-${theme}.svg`,
+        svg: renderRepoCard(repo, { theme }),
+      });
+    }
+  }
+
+  await mkdir("profile", { recursive: true });
+  const existing = await readdir("profile").catch(() => []);
+  for (const file of existing) {
+    if (file.endsWith(".svg")) {
+      await unlink(`profile/${file}`);
+    }
+  }
+
+  for (const card of cards) {
+    await writeFile(card.file, card.svg, "utf8");
+    console.log(`Generated ${card.file}`);
+  }
+
+  const lines = ['<p align="center">'];
+  for (const repo of repos) {
+    lines.push(
+      `<a href="https://github.com/${owner}/${repo.name}#gh-dark-mode-only">`,
+      `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo.name}-dark.svg#gh-dark-mode-only" />`,
+      `</a>`,
+      `<a href="https://github.com/${owner}/${repo.name}#gh-light-mode-only">`,
+      `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo.name}-light.svg#gh-light-mode-only" />`,
+      `</a>`,
+    );
+  }
+  lines.push("</p>");
+
+  await writeFile("README.md", `${lines.join("\n")}\n`, "utf8");
+  console.log(`Generated README.md with ${repos.length} repos`);
+}
+
+try {
+  await main();
+} catch (error) {
+  await writeFailureCards(error);
+  console.error(error);
+  process.exitCode = 1;
+}

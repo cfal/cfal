@@ -1,7 +1,0 @@
-{
-  "private": true,
-  "type": "module",
-  "dependencies": {
-    "github-readme-stats": "github:readme-tools/github-readme-stats"
-  }
-}
