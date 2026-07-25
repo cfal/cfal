@@ -1,4 +1,5 @@
 import { writeFile, mkdir, readdir, unlink } from "node:fs/promises";
+import { renderReadme } from "./render-readme.mjs";
 import { renderErrorCard, renderRepoCard } from "./render-repo-card.mjs";
 
 const EXCLUDE_REPOS = ["awesome-rust", "emit.js", "gotron-sdk", "set-timezone"];
@@ -97,20 +98,14 @@ async function main() {
     console.log(`Generated ${card.file}`);
   }
 
-  const lines = ['<p align="center">'];
-  for (const repo of repos) {
-    lines.push(
-      `<a href="https://github.com/${owner}/${repo.name}#gh-dark-mode-only">`,
-      `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo.name}-dark.svg#gh-dark-mode-only" />`,
-      `</a>`,
-      `<a href="https://github.com/${owner}/${repo.name}#gh-light-mode-only">`,
-      `  <img height=140dp width=320dp align="center" src="https://raw.githubusercontent.com/${owner}/${owner}/refs/heads/main/profile/${repo.name}-light.svg#gh-light-mode-only" />`,
-      `</a>`,
-    );
-  }
-  lines.push("</p>");
-
-  await writeFile("README.md", `${lines.join("\n")}\n`, "utf8");
+  await writeFile(
+    "README.md",
+    renderReadme(
+      owner,
+      repos.map((repo) => repo.name),
+    ),
+    "utf8",
+  );
   console.log(`Generated README.md with ${repos.length} repos`);
 }
 
