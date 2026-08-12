@@ -9,6 +9,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,6 +25,7 @@ jobs:
         id: generate
         run: node scripts/generate.mjs
         env:
+          GITHUB_TOKEN: ${{ github.token }}
           GITHUB_OWNER: ${{ github.repository_owner }}
 
       - name: Commit changes

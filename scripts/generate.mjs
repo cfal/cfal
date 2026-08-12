@@ -5,6 +5,7 @@ import { renderErrorCard, renderRepoCard } from "./render-repo-card.mjs";
 const EXCLUDE_REPOS = ["awesome-rust", "emit.js", "gotron-sdk", "set-timezone"];
 
 const owner = process.env.GITHUB_OWNER;
+const token = process.env.GITHUB_TOKEN;
 
 if (!owner) {
   console.error("GITHUB_OWNER environment variable is required");
@@ -20,6 +21,7 @@ async function fetchRepos() {
         headers: {
           Accept: "application/vnd.github+json",
           "X-GitHub-Api-Version": "2022-11-28",
+          ...(token && { Authorization: `Bearer ${token}` }),
         },
       },
     );
